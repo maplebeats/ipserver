@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 simple_logger = "1.6.0"
 log = "0.4.8"
+futures = "0.3.0"

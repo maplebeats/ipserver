@@ -1,3 +1,4 @@
+use futures::executor;
 use log::{debug, info};
 use std::collections::HashMap;
 use std::env;
@@ -18,8 +19,11 @@ fn main() {
     let addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(addr).unwrap();
     for stream in listener.incoming() {
-        let stream = stream.unwrap();
-        handle_connection(stream);
+        let handle = async {
+            let stream = stream.unwrap();
+            handle_connection(stream);
+        };
+        executor::block_on(handle);
     }
 }
 fn handle_connection(mut stream: TcpStream) {
@@ -75,7 +79,7 @@ fn build_http(body: String) -> String {
 }
 fn build_body(context: String) -> String {
     let body = format!(
-"<html>
+        "<html>
     <head>
         {}
     </head>
@@ -92,7 +96,7 @@ fn build_body(context: String) -> String {
 
 fn is_cmd(ua: String) -> bool {
     debug!("check ua {}", ua);
-    let commands = ["curl", "wget","apache"];
+    let commands = ["curl", "wget", "apache"];
     let mut found: bool;
     found = false;
     for command in &commands {
