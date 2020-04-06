@@ -1,5 +1,5 @@
 use futures::executor;
-use log::{debug, info};
+use log::{debug, error, info, warn};
 use std::collections::HashMap;
 use std::env;
 use std::io::prelude::*;
@@ -20,15 +20,17 @@ fn main() {
     let listener = TcpListener::bind(addr).unwrap();
     for stream in listener.incoming() {
         let handle = async {
-            let stream = stream.unwrap();
-            handle_connection(stream);
+            match stream {
+                Ok(stream) => handle_connection(stream),
+                Err(err) => error!("stream err {}", err),
+            };
         };
         executor::block_on(handle);
     }
 }
 fn handle_connection(mut stream: TcpStream) {
     let mut buff = [0; 512];
-    let n = stream.read(&mut buff[..]).unwrap();
+    let n = stream.read(&mut buff[..]).unwrap_or_default();
     debug!("read header length:{}", n);
     let request = String::from_utf8_lossy(&buff[..]);
     let mut reqs = request.lines();
@@ -58,13 +60,20 @@ fn handle_connection(mut stream: TcpStream) {
 }
 fn handle_path(method: String, headers: HashMap<&str, &str>, mut stream: TcpStream) {
     let peer_addr = stream.peer_addr().unwrap();
-    info!("{} from {}", method, peer_addr);
     let response: String;
-    if is_cmd(headers.get("User-Agent:").ok_or("").unwrap().to_string()) {
+    let ua = match headers.get("User-Agent:") {
+        Some(ua) => ua,
+        None => {
+            warn!("{} not found ua", peer_addr);
+            ""
+        }
+    };
+    if is_cmd(ua.to_string()) {
         response = build_http(peer_addr.to_string());
     } else {
         response = build_http(build_body(peer_addr.to_string()));
     }
+    info!("{} from {} ua {}", method, peer_addr, ua);
     stream.write(response.as_bytes()).unwrap();
     stream.flush().unwrap();
 }
