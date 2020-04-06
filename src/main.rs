@@ -6,7 +6,7 @@ use std::net::TcpListener;
 use std::net::TcpStream;
 
 fn main() {
-    simple_logger::init().unwrap();
+    simple_logger::init_by_env();
     let args: Vec<String> = env::args().collect();
     let port: String;
     if args.len() < 2 {
