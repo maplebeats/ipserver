@@ -56,10 +56,17 @@ fn handle_connection(mut stream: TcpStream) {
         }
         index = index + 1;
     }
-    handle_path(method, headers, stream);
+    match handle_path(method, headers, stream) {
+        Ok(n) => n,
+        Err(err) => error!("{}", err),
+    };
 }
-fn handle_path(method: String, headers: HashMap<&str, &str>, mut stream: TcpStream) {
-    let peer_addr = stream.peer_addr().unwrap();
+fn handle_path(
+    method: String,
+    headers: HashMap<&str, &str>,
+    mut stream: TcpStream,
+) -> std::io::Result<()> {
+    let peer_addr = stream.peer_addr()?;
     let response: String;
     let ua = match headers.get("User-Agent:") {
         Some(ua) => ua,
@@ -74,8 +81,9 @@ fn handle_path(method: String, headers: HashMap<&str, &str>, mut stream: TcpStre
         response = build_http(build_body(peer_addr.to_string()));
     }
     info!("{} from {} ua {}", method, peer_addr, ua);
-    stream.write(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
+    stream.write(response.as_bytes())?;
+    stream.flush()?;
+    Ok(())
 }
 
 fn favicon() -> String {
@@ -90,6 +98,11 @@ fn build_body(context: String) -> String {
     let body = format!(
         "<html>
     <head>
+    <title>address</title> 
+    <style> 
+        body{{ text-align:center }}
+        .div{{ margin:0 auto; width:400px; height:100px; border:1px solid #F00;}}
+    </style> 
         {}
     </head>
     <body>
